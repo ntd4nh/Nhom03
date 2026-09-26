@@ -10,15 +10,15 @@ class json_search_test(unittest.TestCase):
 
     def test_search_found(self):
         """An existing key should return a non-empty list."""
-        self.assertNotEqual([], json_search(key1, data))
+        self.assertNotEqual([], json_search(key1, data, role="viewer"))
 
     def test_search_not_found(self):
         """A missing key should return an empty list."""
-        self.assertEqual([], json_search(key2, data))
+        self.assertEqual([], json_search(key2, data, role="viewer"))
 
     def test_is_a_list(self):
         """The result should be a list."""
-        self.assertIsInstance(json_search(key1, data),list)
+        self.assertIsInstance(json_search(key1, data, role="viewer"), list)
     def test_wrong_role_cannot_read_secret(self):
         '''Role viewer không có quyền đọc apiKey'''
         result = json_search("apiKey", data, role="viewer")

@@ -1,35 +1,45 @@
-from test_data import *
-import policy
+from policy import POLICY
+from test_data import data
+
+
+def _filter_value(value, role):
+    """Filter nested fields according to the access policy."""
+    if isinstance(value, dict):
+        return {
+            k: _filter_value(v, role)
+            for k, v in value.items()
+            if role in POLICY.get(k, [])
+        }
+
+    if isinstance(value, list):
+        return [_filter_value(item, role) for item in value]
+
+    return value
+
 
 def json_search(key, input_object, role=None):
-    # Nếu không truyền role, hệ thống áp dụng vai trò mặc định tối thiểu là 'viewer'
-    if role is None:
-        role = "viewer"
+    """Find matching fields only when the role is authorized."""
+    if not isinstance(key, str) or not isinstance(role, str):
+        return []
 
-    # Lấy bảng phân quyền từ policy.py
-    rules = getattr(policy, 'POLICY', getattr(policy, 'policy', {}))
+    if role not in POLICY.get(key, []):
+        return []
 
-    # Nếu key thuộc danh mục kiểm soát quyền và role không hợp lệ -> từ chối
-    if key in rules:
-        if role not in rules[key]:
-            return []
+    results = []
 
-    ret_val = []
     if isinstance(input_object, dict):
         for k, v in input_object.items():
             if k == key:
-                ret_val.append({k: v})
-            if isinstance(v, dict):
-                ret_val.extend(json_search(key, v, role=role))
-            elif isinstance(v, list):
-                for item in v:
-                    if not isinstance(item, (str, int)):
-                        ret_val.extend(json_search(key, item, role=role))
-    elif isinstance(input_object, list):
-        for val in input_object:
-            if not isinstance(val, (str, int)):
-                ret_val.extend(json_search(key, val, role=role))
-    return ret_val
+                results.append({k: _filter_value(v, role)})
 
-if __name__ == '__main__':
-    print(json_search("issueSummary", data))
+            results.extend(json_search(key, v, role=role))
+
+    elif isinstance(input_object, list):
+        for item in input_object:
+            results.extend(json_search(key, item, role=role))
+
+    return results
+
+
+if __name__ == "__main__":
+    print(json_search("issueSummary", data, role="viewer"))
